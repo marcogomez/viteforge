@@ -1,0 +1,74 @@
+{
+  "name": "@mgz-dev/viteforge",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Build and serve utilities for Vite. Pre-configured presets for apps, packages, and libraries.",
+  "license": "MIT",
+  "author": {
+    "name": "Marco Gomez",
+    "email": "me@mgz.me",
+    "url": "https://mgz.me"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcogomez/viteforge.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    },
+    "./plugins": {
+      "types": "./dist/plugins/index.d.ts",
+      "require": "./dist/plugins/index.cjs",
+      "import": "./dist/plugins/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rimraf dist tsconfig.tsbuildinfo && tsup && tsc --emitDeclarationOnly",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "lint-fix": "eslint src --fix",
+    "test": "vitest run",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.4",
+    "@mgz-dev/codestyle": "^1.0.0",
+    "@types/node": "^25.0.3",
+    "@types/pako": "^2.0.4",
+    "@types/resolve": "^1.20.6",
+    "esbuild": "^0.25.12",
+    "dotenv": "^17.4.2",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.3",
+    "resolve": "^1.22.12",
+    "rimraf": "^6.1.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "pako": "^2.1.0",
+    "svgo": "^4.0.1",
+    "tree-kill": "^1.2.2",
+    "vite": "^7.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vite-plugin-html": "^3.2.2",
+    "vite-plugin-singlefile": "^2.3.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@10.28.2"
+}

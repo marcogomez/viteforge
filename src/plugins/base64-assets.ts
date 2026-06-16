@@ -59,10 +59,21 @@ const MIME_TYPES: Record<string, string> = {
 // only these extensions auto-inline on import (no ?base64 needed).
 // this is the explicit safe list. everything else requires ?base64.
 const AUTO_INLINE = new Set([
-  ".glb", ".gltf", ".fbx", ".obj",
-  ".png", ".jpeg", ".jpg",
-  ".gif", ".webm", ".mp4", ".mp3",
-  ".ogg", ".wav", ".ttf", ".otf"
+  ".glb",
+  ".gltf",
+  ".fbx",
+  ".obj",
+  ".png",
+  ".jpeg",
+  ".jpg",
+  ".gif",
+  ".webm",
+  ".mp4",
+  ".mp3",
+  ".ogg",
+  ".wav",
+  ".ttf",
+  ".otf"
 ]);
 
 function lookupMime(ext: string): string {

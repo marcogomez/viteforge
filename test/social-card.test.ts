@@ -3,6 +3,11 @@ import os from "os";
 import path from "path";
 import sharp from "sharp";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+// libvips caches input file handles, which blocks temp dir deletion on
+// windows (open files cannot be removed there). the cache is pointless in
+// tests, so it goes off before any pipeline runs.
+sharp.cache(false);
 import { postProcessingPlugin } from "../src/plugins/post-processing";
 import { generateSocialTags, processScreenshot, resolveCardImageUrl } from "../src/plugins/social-card";
 
@@ -17,7 +22,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  fs.rmSync(tmpDir, { recursive: true });
+  // retries cover windows, where a still-closing handle makes rm fail with
+  // EPERM instead of succeeding like on posix
+  fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   vi.restoreAllMocks();
 });
 

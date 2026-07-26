@@ -5,6 +5,9 @@ import { deflate } from "pako";
 import path from "path";
 import { optimize } from "svgo";
 
+import { generateSocialTags, processScreenshot } from "./social-card.js";
+
+import type { SocialCardImage, SocialOptions } from "./social-card.js";
 import type { Plugin } from "vite";
 
 const require = createRequire(import.meta.url);
@@ -41,6 +44,15 @@ export interface PostProcessingPluginOptions {
    * @default false
    */
   usePako?: boolean;
+  /**
+   * Social card metadata. When set, Open Graph and Twitter tags are injected
+   * into the built HTML. When a screenshot exists at the app root it is
+   * resized and compressed into a sidecar card image next to index.html,
+   * because scrapers require the og:image to be a fetchable URL and reject
+   * inlined data URIs.
+   * @default undefined (no social tags)
+   */
+  social?: SocialOptions;
 }
 
 /**
@@ -54,9 +66,18 @@ export interface PostProcessingPluginOptions {
  * The result is a smaller file that's also obfuscated (not human-readable).
  */
 export function postProcessingPlugin(options: PostProcessingPluginOptions = {}): Plugin {
-  const { enabled = true, compressionLevel = 9, logStats = true, titleString, iconString, usePako = false } = options;
+  const {
+    enabled = true,
+    compressionLevel = 9,
+    logStats = true,
+    titleString,
+    iconString,
+    usePako = false,
+    social
+  } = options;
 
   let outputDir: string;
+  let rootDir: string;
 
   return {
     name: "vite-post-processing",
@@ -64,10 +85,11 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
     enforce: "post",
 
     configResolved(config) {
+      rootDir = config.root;
       outputDir = path.resolve(config.root, config.build.outDir);
     },
 
-    closeBundle() {
+    async closeBundle() {
       if (!enabled) {
         console.log("[post-processing] Plugin disabled, skipping compression");
         return;
@@ -139,8 +161,33 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
         faviconTag = `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;charset=utf-8,${encodedSvg}">`;
       }
 
+      const screenshotSource = social?.screenshot?.source ?? "screenshot.png";
+      const screenshotPath = path.resolve(rootDir, screenshotSource);
+      let socialTags = "";
+      if (social !== undefined) {
+        let cardImage: SocialCardImage | undefined;
+        if (fs.existsSync(screenshotPath)) {
+          cardImage = await processScreenshot(screenshotPath, outputDir, social.screenshot);
+          if (logStats) {
+            console.log(
+              `[post-processing] Social card: ${cardImage.fileName} (${cardImage.width}x${cardImage.height}, ${formatBytes(cardImage.bytes)})`
+            );
+          }
+        } else {
+          console.warn(
+            `[post-processing] No ${screenshotSource} found at the app root, social tags will carry no image`
+          );
+        }
+        socialTags = generateSocialTags(titleString, social, cardImage);
+      } else if (fs.existsSync(screenshotPath)) {
+        console.warn(
+          "[post-processing] Found screenshot.png but no social options, skipping card generation. " +
+            "Set the social option to generate share tags and the card image."
+        );
+      }
+
       const csp = `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; object-src 'none';">`;
-      const head = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="Cache-Control" content="no-cache">${csp}${titleTag}${faviconTag}<style>${combinedStyles}</style></head>`;
+      const head = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="Cache-Control" content="no-cache">${csp}${titleTag}${faviconTag}${socialTags}<style>${combinedStyles}</style></head>`;
       const decode = `var c="${compressedBase64}";var b=atob(c);var u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);`;
 
       let bootstrapScripts: string;

@@ -23,6 +23,7 @@ export default defineConfig({
     "vite-plugin-glsl",
     "vite-plugin-html",
     "vite-plugin-singlefile",
-    "svgo"
+    "svgo",
+    "sharp"
   ]
 });

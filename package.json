@@ -56,7 +56,8 @@
     "rimraf": "^6.1.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "sharp": "^0.34.0"
   },
   "dependencies": {
     "pako": "^2.1.0",
@@ -70,5 +71,19 @@
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@10.28.2"
+  "packageManager": "pnpm@10.28.2",
+  "peerDependencies": {
+    "sharp": ">=0.33.0"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "esbuild"
+    ]
+  }
 }

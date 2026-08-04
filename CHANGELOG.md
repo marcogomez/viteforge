@@ -1,5 +1,11 @@
 # @mgz-dev/viteforge
 
+## 1.1.1
+
+### Patch Changes
+
+- 143aa2d: Adds the proper CSP for WASM bundling
+
 ## 1.1.0
 
 ### Minor Changes

@@ -186,7 +186,9 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
         );
       }
 
-      const csp = `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; object-src 'none';">`;
+      // wasm-unsafe-eval permits WebAssembly.instantiate from bytes (embedded
+      // decoders like draco and basis) without allowing JS eval
+      const csp = `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; object-src 'none';">`;
       const head = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="Cache-Control" content="no-cache">${csp}${titleTag}${faviconTag}${socialTags}<style>${combinedStyles}</style></head>`;
       const decode = `var c="${compressedBase64}";var b=atob(c);var u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);`;
 

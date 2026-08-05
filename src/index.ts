@@ -3,7 +3,13 @@ import dts from "vite-plugin-dts";
 import { createHtmlPlugin } from "vite-plugin-html";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
-import { base64AssetPlugin, calculateBuiltSizePlugin, injectNoncePlugin, txtLoaderPlugin } from "./plugins";
+import {
+  bareQueryFlagsPlugin,
+  base64AssetPlugin,
+  calculateBuiltSizePlugin,
+  injectNoncePlugin,
+  txtLoaderPlugin
+} from "./plugins";
 
 import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
 
@@ -118,6 +124,10 @@ export function defineViteConfig(options: ViteConfigOptions = {}): (env: ConfigE
 
     // TXT file loader - always enabled
     plugins.push(txtLoaderPlugin());
+
+    // Dev-server proxy compatibility - restores vite's bare query flags
+    // (?raw, ?url, ?worker) that proxies re-serialize as ?raw= and friends
+    plugins.push(bareQueryFlagsPlugin());
 
     // Single file output - only in production builds by default
     const useSingleFile = singleFile ?? isBuild;

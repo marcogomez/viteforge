@@ -1,4 +1,5 @@
 export { injectNoncePlugin } from "./inject-nonce.js";
+export { bareQueryFlagsPlugin } from "./bare-query-flags.js";
 export { base64AssetPlugin } from "./base64-assets.js";
 export { calculateBuiltSizePlugin } from "./calculate-built-size.js";
 export { txtLoaderPlugin } from "./txt-loader.js";

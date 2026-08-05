@@ -1,5 +1,11 @@
 # @mgz-dev/viteforge
 
+## 1.1.2
+
+### Patch Changes
+
+- 0666a2e: fixes raw imports
+
 ## 1.1.1
 
 ### Patch Changes

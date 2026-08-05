@@ -1,6 +1,6 @@
 {
   "name": "@mgz-dev/viteforge",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "description": "Build and serve utilities for Vite. Pre-configured presets for apps, packages, and libraries.",
   "license": "MIT",

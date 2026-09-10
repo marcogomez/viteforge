@@ -53,6 +53,54 @@ export interface PostProcessingPluginOptions {
    * @default undefined (no social tags)
    */
   social?: SocialOptions;
+  /**
+   * The ownership notice, the copyright and terms text that ships inside
+   * the built file. It is written twice, as an HTML comment right before
+   * the bootstrap script, where anyone fetching the page reads it first,
+   * and as a `/*! ... *\/` block at the top of the compressed module, so
+   * it travels with the code when someone extracts it. A string is the
+   * text itself, `{ file }` is a path relative to the app root. When unset,
+   * a `NOTICE.txt` at the app root is used if one exists.
+   * @default undefined (NOTICE.txt at the app root when present)
+   */
+  notice?: string | { file: string };
+}
+
+/** the file the notice is read from when the option names none */
+const DEFAULT_NOTICE_FILE = "NOTICE.txt";
+
+/**
+ * Resolve the notice text, from the option or from the default file.
+ * Returns null when there is none, and warns when a named file is missing.
+ */
+function resolveNotice(rootDir: string, notice: string | { file: string } | undefined): string | null {
+  let text: string | null = null;
+  if (typeof notice === "string") {
+    text = notice;
+  } else {
+    const file = notice?.file ?? DEFAULT_NOTICE_FILE;
+    const noticePath = path.resolve(rootDir, file);
+    if (fs.existsSync(noticePath)) {
+      text = fs.readFileSync(noticePath, "utf-8");
+    } else if (notice !== undefined) {
+      console.warn(`[post-processing] Notice file ${file} not found at the app root, no notice will ship`);
+    }
+  }
+  if (text === null) {
+    return null;
+  }
+  const trimmed = text.replace(/\r\n/g, "\n").trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/** the notice as a block comment, with any comment terminator inside it disarmed */
+function noticeAsScriptComment(text: string): string {
+  return `/*!\n${text.replace(/\*\//g, "* /")}\n*/\n`;
+}
+
+/** the notice as an HTML comment, with any double dash inside it disarmed, since HTML forbids them */
+function noticeAsHtmlComment(text: string): string {
+  return `<!--\n${text.replace(/--/g, "- -")}\n-->`;
 }
 
 /**
@@ -60,8 +108,10 @@ export interface PostProcessingPluginOptions {
  *
  * This plugin:
  * 1. Extracts all JavaScript from the final HTML
- * 2. Compresses it using pako (deflate/gzip)
- * 3. Wraps it in a self-extracting HTML with embedded pako inflate
+ * 2. Puts the ownership notice, when there is one, at the top of it
+ * 3. Compresses it using pako (deflate/gzip)
+ * 4. Wraps it in a self-extracting HTML with embedded pako inflate, the
+ *    notice repeated as an HTML comment before the bootstrap script
  *
  * The result is a smaller file that's also obfuscated (not human-readable).
  */
@@ -73,7 +123,8 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
     titleString,
     iconString,
     usePako = false,
-    social
+    social,
+    notice
   } = options;
 
   let outputDir: string;
@@ -135,8 +186,9 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
         return;
       }
 
-      // Combine all scripts
-      const combinedScript = scripts.join("\n");
+      // Combine all scripts, the notice at the top when there is one
+      const noticeText = resolveNotice(rootDir, notice);
+      const combinedScript = (noticeText === null ? "" : noticeAsScriptComment(noticeText)) + scripts.join("\n");
       const scriptSize = Buffer.byteLength(combinedScript, "utf-8");
 
       // Compress using pako deflate (raw, no gzip header for smaller size)
@@ -204,15 +256,21 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
         bootstrapScripts = `<script>(async()=>{${decode}var ds=new DecompressionStream("deflate-raw");var w=ds.writable.getWriter();w.write(u);w.close();var d=await new Response(ds.readable).text();var bl=new Blob([d],{type:"text/javascript"});var s=document.createElement("script");s.type="module";s.src=URL.createObjectURL(bl);document.head.appendChild(s);})();</script>`;
       }
 
-      const finalHtml = `${head}<body><div id="app"></div><div id="ui"></div>${bootstrapScripts}</body></html>`.replace(
-        /\n/g,
-        ""
-      );
+      // the newlines go, except inside the notice, which keeps its lines
+      const opening = `${head}<body><div id="app"></div><div id="ui"></div>`.replace(/\n/g, "");
+      const closing = `${bootstrapScripts}</body></html>`.replace(/\n/g, "");
+      const noticeTag = noticeText === null ? "" : noticeAsHtmlComment(noticeText);
+      const finalHtml = `${opening}${noticeTag}${closing}`;
 
       fs.writeFileSync(htmlPath, finalHtml, "utf-8");
 
       const finalSize = Buffer.byteLength(finalHtml, "utf-8");
       const compressedSize = Buffer.byteLength(compressedBase64, "utf-8");
+
+      if (logStats && noticeText !== null) {
+        const noticeSize = formatBytes(Buffer.byteLength(noticeText, "utf-8"));
+        console.log(`[post-processing] Notice: ${noticeSize} in the html and the script`);
+      }
 
       if (logStats) {
         console.log("\n[post-processing] Compression complete:");

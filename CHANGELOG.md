@@ -1,5 +1,11 @@
 # @mgz-dev/viteforge
 
+## 1.2.0
+
+### Minor Changes
+
+- 1bb1433: adds a notice option on the post-processing plugin
+
 ## 1.1.2
 
 ### Patch Changes

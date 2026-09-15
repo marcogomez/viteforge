@@ -55,16 +55,24 @@ export interface PostProcessingPluginOptions {
   social?: SocialOptions;
   /**
    * The ownership notice, the copyright and terms text that ships inside
-   * the built file. It is written twice, as an HTML comment right before
-   * the bootstrap script, where anyone fetching the page reads it first,
-   * and as a `/*! ... *\/` block at the top of the compressed module, so
-   * it travels with the code when someone extracts it. A string is the
-   * text itself, `{ file }` is a path relative to the app root. When unset,
-   * a `NOTICE.txt` at the app root is used if one exists.
+   * the built file. It is written in four places, all inside the one file.
+   * As hidden text in the body, a `pre` element with the `hidden` attribute
+   * right before the bootstrap script, so a tool that reads the page as
+   * text and drops comments still finds it. As an HTML comment next to it,
+   * where anyone fetching the raw page reads it first. As a `/*! ... *\/`
+   * block at the top of the compressed module, so it travels with the code
+   * when someone extracts it. And in the head, as a `meta name="copyright"`
+   * tag holding the notice's copyright line and a `link rel="license"` tag
+   * pointing at the hidden text. A string is the text itself, `{ file }` is
+   * a path relative to the app root. When unset, a `NOTICE.txt` at the app
+   * root is used if one exists.
    * @default undefined (NOTICE.txt at the app root when present)
    */
   notice?: string | { file: string };
 }
+
+/** the id of the hidden notice element, what the license link in the head points at */
+const NOTICE_ELEMENT_ID = "ownership-notice";
 
 /** the file the notice is read from when the option names none */
 const DEFAULT_NOTICE_FILE = "NOTICE.txt";
@@ -103,6 +111,35 @@ function noticeAsHtmlComment(text: string): string {
   return `<!--\n${text.replace(/--/g, "- -")}\n-->`;
 }
 
+/** Escapes a string for use as HTML text or inside a double quoted attribute. */
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * the notice as text the page holds but never shows, a pre element with
+ * the hidden attribute, so its lines stay as written and a reader that
+ * turns the page into text, dropping comments on the way, still finds it
+ */
+function noticeAsHiddenText(text: string): string {
+  return `<pre id="${NOTICE_ELEMENT_ID}" hidden>${escapeHtml(text)}</pre>`;
+}
+
+/** the line of the notice that names the copyright, or its first line when none does */
+function copyrightLine(text: string): string {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  return lines.find((line) => /copyright/i.test(line)) ?? lines[0] ?? "";
+}
+
+/** the head's two ownership tags, the copyright line and the license link to the hidden text */
+function noticeHeadTags(text: string): string {
+  const copyright = `<meta name="copyright" content="${escapeHtml(copyrightLine(text))}">`;
+  return `${copyright}<link rel="license" href="#${NOTICE_ELEMENT_ID}">`;
+}
+
 /**
  * Post-processing plugin that compresses the final HTML bundle.
  *
@@ -111,7 +148,9 @@ function noticeAsHtmlComment(text: string): string {
  * 2. Puts the ownership notice, when there is one, at the top of it
  * 3. Compresses it using pako (deflate/gzip)
  * 4. Wraps it in a self-extracting HTML with embedded pako inflate, the
- *    notice repeated as an HTML comment before the bootstrap script
+ *    notice repeated as hidden text and as an HTML comment before the
+ *    bootstrap script, and named in the head by a copyright meta tag and
+ *    a license link
  *
  * The result is a smaller file that's also obfuscated (not human-readable).
  */
@@ -241,7 +280,8 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
       // wasm-unsafe-eval permits WebAssembly.instantiate from bytes (embedded
       // decoders like draco and basis) without allowing JS eval
       const csp = `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; object-src 'none';">`;
-      const head = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="Cache-Control" content="no-cache">${csp}${titleTag}${faviconTag}${socialTags}<style>${combinedStyles}</style></head>`;
+      const ownershipTags = noticeText === null ? "" : noticeHeadTags(noticeText);
+      const head = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="Cache-Control" content="no-cache">${csp}${titleTag}${faviconTag}${socialTags}${ownershipTags}<style>${combinedStyles}</style></head>`;
       const decode = `var c="${compressedBase64}";var b=atob(c);var u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);`;
 
       let bootstrapScripts: string;
@@ -256,10 +296,12 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
         bootstrapScripts = `<script>(async()=>{${decode}var ds=new DecompressionStream("deflate-raw");var w=ds.writable.getWriter();w.write(u);w.close();var d=await new Response(ds.readable).text();var bl=new Blob([d],{type:"text/javascript"});var s=document.createElement("script");s.type="module";s.src=URL.createObjectURL(bl);document.head.appendChild(s);})();</script>`;
       }
 
-      // the newlines go, except inside the notice, which keeps its lines
+      // the newlines go, except inside the notice, which keeps its lines in
+      // both its forms, the hidden text first and the comment after it
       const opening = `${head}<body><div id="app"></div><div id="ui"></div>`.replace(/\n/g, "");
       const closing = `${bootstrapScripts}</body></html>`.replace(/\n/g, "");
-      const noticeTag = noticeText === null ? "" : noticeAsHtmlComment(noticeText);
+      const noticeTag =
+        noticeText === null ? "" : `${noticeAsHiddenText(noticeText)}${noticeAsHtmlComment(noticeText)}`;
       const finalHtml = `${opening}${noticeTag}${closing}`;
 
       fs.writeFileSync(htmlPath, finalHtml, "utf-8");
@@ -269,7 +311,7 @@ export function postProcessingPlugin(options: PostProcessingPluginOptions = {}):
 
       if (logStats && noticeText !== null) {
         const noticeSize = formatBytes(Buffer.byteLength(noticeText, "utf-8"));
-        console.log(`[post-processing] Notice: ${noticeSize} in the html and the script`);
+        console.log(`[post-processing] Notice: ${noticeSize} twice in the html, once in the script, named in the head`);
       }
 
       if (logStats) {

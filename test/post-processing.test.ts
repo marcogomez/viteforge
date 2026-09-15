@@ -61,7 +61,36 @@ describe("postProcessingPlugin", () => {
   it("ships no notice when none is given and no NOTICE.txt exists", async () => {
     const html = await runPlugin({});
     expect(html).not.toContain("<!--");
+    expect(html).not.toContain("ownership-notice");
+    expect(html).not.toContain('name="copyright"');
+    expect(html).not.toContain('rel="license"');
     expect(inflateScript(html)).toBe(SCRIPT);
+  });
+
+  it("writes the notice as hidden text before the comment, so a reader that drops comments still finds it", async () => {
+    const html = await runPlugin({ notice: NOTICE });
+    const hidden = `<pre id="ownership-notice" hidden>${NOTICE}</pre>`;
+    expect(html).toContain(hidden);
+    expect(html.indexOf(hidden)).toBeGreaterThan(html.indexOf("</head>"));
+    expect(html.indexOf(hidden)).toBeLessThan(html.indexOf("<!--"));
+  });
+
+  it("names the notice in the head with a copyright line and a license link to the hidden text", async () => {
+    const html = await runPlugin({ notice: NOTICE });
+    expect(html).toContain('<meta name="copyright" content="TANKZ is Copyright (c) 2026 Marco Gomez.">');
+    expect(html).toContain('<link rel="license" href="#ownership-notice">');
+    expect(html.indexOf('name="copyright"')).toBeLessThan(html.indexOf("</head>"));
+  });
+
+  it("takes the notice's first line as the copyright when no line names one", async () => {
+    const html = await runPlugin({ notice: "All rights reserved.\nNo copying." });
+    expect(html).toContain('<meta name="copyright" content="All rights reserved.">');
+  });
+
+  it("escapes markup inside the notice's hidden text and copyright line", async () => {
+    const html = await runPlugin({ notice: 'Copyright <b>"me" & co</b>' });
+    expect(html).toContain('<pre id="ownership-notice" hidden>Copyright &lt;b&gt;&quot;me&quot; &amp; co&lt;/b&gt;</pre>');
+    expect(html).toContain('<meta name="copyright" content="Copyright &lt;b&gt;&quot;me&quot; &amp; co&lt;/b&gt;">');
   });
 
   it("writes a notice string as an html comment before the bootstrap and as a header on the script", async () => {

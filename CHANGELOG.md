@@ -1,5 +1,11 @@
 # @mgz-dev/viteforge
 
+## 1.3.0
+
+### Minor Changes
+
+- ef55c64: improves the notice system
+
 ## 1.2.0
 
 ### Minor Changes

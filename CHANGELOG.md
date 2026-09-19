@@ -1,5 +1,11 @@
 # @mgz-dev/viteforge
 
+## 1.4.0
+
+### Minor Changes
+
+- ce076bd: workerPlugin bundles a worker as an es module instead of an iife to allow top-level await
+
 ## 1.3.0
 
 ### Minor Changes

@@ -41,7 +41,14 @@ export function workerPlugin(): Plugin {
           target: "es2022",
           lib: {
             entry: workerPath,
-            formats: ["iife"],
+            /*
+             * A module, not an IIFE.
+             *
+             * An IIFE has no way to express a top-level await, and a worker that loads a wasm
+             * encoder has one, so bundling it as an IIFE fails outright. The cost is that the worker
+             * has to be constructed with { type: "module" }, which every caller of this plugin does.
+             */
+            formats: ["es"],
             name: "worker"
           },
           rollupOptions: {

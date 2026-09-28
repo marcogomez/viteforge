@@ -1,5 +1,11 @@
 # @mgz-dev/viteforge
 
+## 1.5.0
+
+### Minor Changes
+
+- cfdfd41: adds a canonical option to the social block on the post-processing plugin
+
 ## 1.4.0
 
 ### Minor Changes

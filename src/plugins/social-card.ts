@@ -46,6 +46,15 @@ export interface SocialOptions {
    */
   url: string;
   /**
+   * Absolute URL of the page that should be indexed for this build, when
+   * that page is not the artifact itself, for example a site page that
+   * embeds the game in a frame. It goes into the canonical link and the
+   * og:url tag in place of `url`, while the card image keeps resolving
+   * against `url`, which is where the sidecar file lives
+   * @default undefined (the canonical link and og:url use `url`)
+   */
+  canonical?: string;
+  /**
    * Description used for the description, og:description and
    * twitter:description tags
    */
@@ -105,11 +114,12 @@ export function resolveCardImageUrl(baseUrl: string, fileName: string): string {
  */
 export function generateSocialTags(title: string | undefined, social: SocialOptions, image?: SocialCardImage): string {
   const tags: string[] = [];
+  const pageUrl = social.canonical ?? social.url;
 
   if (social.description !== undefined) {
     tags.push(metaTag("name", "description", social.description));
   }
-  tags.push(`<link rel="canonical" href="${escapeAttribute(social.url)}">`);
+  tags.push(`<link rel="canonical" href="${escapeAttribute(pageUrl)}">`);
   if (social.themeColor !== undefined) {
     tags.push(metaTag("name", "theme-color", social.themeColor));
   }
@@ -121,7 +131,7 @@ export function generateSocialTags(title: string | undefined, social: SocialOpti
     tags.push(metaTag("property", "og:description", social.description));
   }
   tags.push(metaTag("property", "og:type", "website"));
-  tags.push(metaTag("property", "og:url", social.url));
+  tags.push(metaTag("property", "og:url", pageUrl));
   if (social.siteName !== undefined) {
     tags.push(metaTag("property", "og:site_name", social.siteName));
   }

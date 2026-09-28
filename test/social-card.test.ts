@@ -96,6 +96,19 @@ describe("generateSocialTags", () => {
     expect(tags).toContain('<meta name="twitter:site" content="@thecodetherapy">');
   });
 
+  it("points the canonical link and og:url at the canonical page while the image stays beside the artifact", () => {
+    const tags = generateSocialTags(
+      "LIMITS",
+      { url: "https://games.mgz.dev/g/limits/", canonical: "https://mgz.dev/games/limits/play" },
+      image
+    );
+    expect(tags).toContain('<link rel="canonical" href="https://mgz.dev/games/limits/play">');
+    expect(tags).toContain('<meta property="og:url" content="https://mgz.dev/games/limits/play">');
+    expect(tags).toContain('<meta property="og:image" content="https://games.mgz.dev/g/limits/card.jpg">');
+    expect(tags).toContain('<meta name="twitter:image" content="https://games.mgz.dev/g/limits/card.jpg">');
+    expect(tags).not.toContain('href="https://games.mgz.dev/g/limits/"');
+  });
+
   it("degrades to a summary card without an image", () => {
     const tags = generateSocialTags("LIMITS", { url: "https://games.mgz.dev/g/limits/" });
     expect(tags).toContain('<meta name="twitter:card" content="summary">');

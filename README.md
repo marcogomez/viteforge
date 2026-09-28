@@ -475,6 +475,41 @@ Output example:
 
 Set `usePako: true` if you need to support Firefox < 105 or Safari < 16.4 (browsers without `DecompressionStream`).
 
+#### Social tags
+
+The optional `social` block writes the tags link previews read into the head of the built HTML: `description`, the canonical link, `theme-color`, the Open Graph tags and the Twitter card tags. The card image is a separate file written next to the HTML, `card.jpg` by default, because scrapers reject a data URL in `og:image`.
+
+```ts
+postProcessingPlugin({
+  titleString: "TANKZ",
+  social: {
+    url: "https://mgz.dev/g/tankz/",                // where the built HTML is served
+    canonical: "https://mgz.dev/games/tankz/play",  // the page to index, when it is another page
+    description: "Tiny tanks in a dungeon crawler.",
+    siteName: "mgz.dev games",
+    twitterHandle: "thecodetherapy",
+    imageAlt: "TankZ gameplay screenshot",
+    themeColor: "#0c1019",
+    locale: "en_US",
+    screenshot: { width: 1024, height: 576, format: "jpeg", quality: 80 }
+  }
+})
+```
+
+| Option | What it does |
+|---|---|
+| `url` | Required. The address the built HTML is served at. The card image address is this plus the image file name, so it must be the folder of the HTML, not a page that embeds it. |
+| `canonical` | The address of the page search engines should index, when the HTML is embedded in a page of a site. Goes into the canonical link and `og:url`. Unset, both use `url`. |
+| `description` | `description`, `og:description` and `twitter:description`. |
+| `siteName` | `og:site_name`. |
+| `twitterHandle` | `twitter:site`, with or without the leading `@`. |
+| `imageAlt` | `og:image:alt` and `twitter:image:alt`. |
+| `themeColor` | `theme-color`. Discord uses it as the embed accent color. |
+| `locale` | `og:locale`, for example `en_US`. |
+| `screenshot` | How the card image is made, see below. |
+
+The card image comes from `screenshot.png` at the app root, or the file named by `screenshot.source`. It is resized with a center crop to `screenshot.width` by `screenshot.height` (default 1200 by 630), encoded as `screenshot.format` (`jpeg` by default, `webp` optional, which Facebook's scraper does not accept) at `screenshot.quality` (default 80), and written as `screenshot.fileName` (default `card.jpg` or `card.webp`). The resize needs `sharp`, which the app installs itself as a dev dependency. When the screenshot file is missing the build warns and writes the text tags alone, and the Twitter card becomes `summary` instead of `summary_large_image`. A screenshot with no `social` block is left unused, with a warning.
+
 ### `workerPlugin()`
 
 Bundles `.worker` imports as separate IIFE bundles and returns blob URLs for `new Worker()` instantiation.
